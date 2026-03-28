@@ -1182,8 +1182,8 @@ const Facturation = ({ clients }) => {
 // ÉCRAN DE CONNEXION
 // ═══════════════════════════════════════════════════════════
 const CREDENTIALS = [
-  { login: "elie.attia", password: "Neowise2026!", userId: "elie" },
-  { login: "collaboratrice", password: "Neowise2026!", userId: "collab" },
+  { login: "eliedan@neowise-expertise.fr", password: "Neowise2026!", userId: "elie" },
+  { login: "aurelie@neowise-expertise.fr", password: "Neowise2026!", userId: "collab" },
 ];
 
 const LoginScreen = ({ onLogin }) => {
@@ -1227,7 +1227,7 @@ const LoginScreen = ({ onLogin }) => {
             <input
               value={login} onChange={e => setLogin(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSubmit()}
-              placeholder="elie.attia ou collaboratrice"
+              placeholder="votre@email.fr"
               style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${error ? "#ffcccc" : "#dde3ea"}`, fontSize: 13, boxSizing: "border-box", outline: "none", transition: "border .2s" }}
               onFocus={e => e.target.style.borderColor = "#1a5c8a"}
               onBlur={e => e.target.style.borderColor = error ? "#ffcccc" : "#dde3ea"}
@@ -1261,14 +1261,7 @@ const LoginScreen = ({ onLogin }) => {
             {loading ? "Connexion en cours..." : "Se connecter →"}
           </button>
 
-          <div style={{ marginTop: 24, padding: 14, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0" }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Accès cabinet</div>
-            <div style={{ fontSize: 12, color: "#555", lineHeight: 1.8 }}>
-              <strong>Expert-Comptable :</strong> elie.attia<br />
-              <strong>Collaboratrice :</strong> collaboratrice<br />
-              <strong>Mot de passe :</strong> Neowise2026!
-            </div>
-          </div>
+
         </div>
 
         <div style={{ textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,.3)" }}>
