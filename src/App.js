@@ -1179,10 +1179,111 @@ const Facturation = ({ clients }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// ÉCRAN DE CONNEXION
+// ═══════════════════════════════════════════════════════════
+const CREDENTIALS = [
+  { login: "elie.attia", password: "Neowise2026!", userId: "elie" },
+  { login: "collaboratrice", password: "Neowise2026!", userId: "collab" },
+];
+
+const LoginScreen = ({ onLogin }) => {
+  const [login, setLogin] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = () => {
+    setLoading(true);
+    setError("");
+    setTimeout(() => {
+      const match = CREDENTIALS.find(c => c.login === login.trim() && c.password === password);
+      if (match) {
+        onLogin(USERS.find(u => u.id === match.userId));
+      } else {
+        setError("Identifiant ou mot de passe incorrect.");
+        setLoading(false);
+      }
+    }, 600);
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#1a2332 0%,#1a3a5c 60%,#1a5c8a 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <div style={{ width: "100%", maxWidth: 420, padding: 24 }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", letterSpacing: 1 }}>NEOWISE</div>
+          <div style={{ fontSize: 12, color: "#7ecbf7", fontWeight: 600, letterSpacing: 2.5, textTransform: "uppercase", marginTop: 4 }}>Expertise · CRM</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,.4)", marginTop: 8 }}>Elie-Dan ATTIA · Expert-Comptable & CAC</div>
+        </div>
+
+        {/* Card */}
+        <div style={{ background: "#fff", borderRadius: 20, padding: 36, boxShadow: "0 24px 80px rgba(0,0,0,.35)" }}>
+          <h2 style={{ margin: "0 0 6px", fontSize: 20, fontWeight: 800, color: "#1a2332" }}>Connexion</h2>
+          <p style={{ margin: "0 0 28px", fontSize: 13, color: "#888" }}>Accès réservé au cabinet</p>
+
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Identifiant</div>
+            <input
+              value={login} onChange={e => setLogin(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && handleSubmit()}
+              placeholder="elie.attia ou collaboratrice"
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${error ? "#ffcccc" : "#dde3ea"}`, fontSize: 13, boxSizing: "border-box", outline: "none", transition: "border .2s" }}
+              onFocus={e => e.target.style.borderColor = "#1a5c8a"}
+              onBlur={e => e.target.style.borderColor = error ? "#ffcccc" : "#dde3ea"}
+            />
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>Mot de passe</div>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPwd ? "text" : "password"}
+                value={password} onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === "Enter" && handleSubmit()}
+                placeholder="••••••••••"
+                style={{ width: "100%", padding: "12px 44px 12px 14px", borderRadius: 10, border: `1.5px solid ${error ? "#ffcccc" : "#dde3ea"}`, fontSize: 13, boxSizing: "border-box", outline: "none" }}
+                onFocus={e => e.target.style.borderColor = "#1a5c8a"}
+                onBlur={e => e.target.style.borderColor = error ? "#ffcccc" : "#dde3ea"}
+              />
+              <button onClick={() => setShowPwd(!showPwd)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#888" }}>
+                {showPwd ? "🙈" : "👁"}
+              </button>
+            </div>
+          </div>
+
+          {error && <div style={{ fontSize: 12, color: "#c0392b", marginBottom: 16, padding: "8px 12px", background: "#fff0f0", borderRadius: 8, border: "1px solid #ffcccc" }}>⚠️ {error}</div>}
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading || !login || !password}
+            style={{ width: "100%", padding: "13px", background: loading || !login || !password ? "#ccc" : "linear-gradient(135deg,#1a5c8a,#2d7a4f)", color: "#fff", border: "none", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: loading || !login || !password ? "not-allowed" : "pointer", marginTop: 8, transition: "all .2s", letterSpacing: 0.5 }}>
+            {loading ? "Connexion en cours..." : "Se connecter →"}
+          </button>
+
+          <div style={{ marginTop: 24, padding: 14, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: 0.5 }}>Accès cabinet</div>
+            <div style={{ fontSize: 12, color: "#555", lineHeight: 1.8 }}>
+              <strong>Expert-Comptable :</strong> elie.attia<br />
+              <strong>Collaboratrice :</strong> collaboratrice<br />
+              <strong>Mot de passe :</strong> Neowise2026!
+            </div>
+          </div>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 11, color: "rgba(255,255,255,.3)" }}>
+          © 2026 NEOWISE EXPERTISE · Accès sécurisé
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════
 // APP ROOT
 // ═══════════════════════════════════════════════════════════
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(USERS[0]);
+  const [currentUser, setCurrentUser] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [clients, setClients] = useState(INITIAL_CLIENTS);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -1191,6 +1292,8 @@ export default function App() {
     setClients(prev => prev.map(c => c.id === id ? { ...c, ...changes } : c));
     setSelectedClient(prev => prev?.id === id ? { ...prev, ...changes } : prev);
   };
+
+  if (!currentUser) return <LoginScreen onLogin={user => setCurrentUser(user)} />;
 
   const navItems = [
     { id: "dashboard", label: "Tableau de bord", icon: "🏠" },
@@ -1229,6 +1332,9 @@ export default function App() {
               </div>
             </button>
           ))}
+          <button onClick={() => { setCurrentUser(null); setPage("dashboard"); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", background: "none", border: "1px solid rgba(255,255,255,.1)", borderRadius: 8, cursor: "pointer", marginTop: 6, color: "rgba(255,255,255,.5)", fontSize: 12, fontWeight: 600 }}>
+            🚪 Se déconnecter
+          </button>
         </div>
       </div>
 
