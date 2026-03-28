@@ -13,120 +13,124 @@ const fmt = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", mon
 const fmtM = (n) => (n || 0).toLocaleString("fr-FR") + " €";
 const daysLeft = (d) => Math.ceil((new Date(d) - today) / 86400000);
 
+
+const makeClient = (id, nom, email, tel, siret, adresse, ville, cp) => ({
+  id, nom, email: email||"", tel: tel||"", siret: siret||"",
+  adresse: adresse||"", ville: ville||"", cp: cp||"",
+  forme: "À définir", tva: "À définir", activite: "", ca: 0, contact: "",
+  responsable: "elie", statut: "En cours", honorairesMensuels: 0,
+  avancement: { saisie: 0, rapprochement: 0, declarations: 0, bilan: 0 },
+  docs: [], demandes: [], factures: [], temps: [], lettresMission: [],
+  echeancesIds: [], notes: "",
+});
+
 const INITIAL_CLIENTS = [
-  {
-    id: 1, nom: "SARL DUPONT & FILS", forme: "SARL", tva: "Réel normal", activite: "BTP",
-    ca: 850000, contact: "Marc Dupont", email: "m.dupont@dupont-fils.fr", tel: "06 12 34 56 78",
-    responsable: "elie", statut: "En cours", honorairesMensuels: 2400,
-    avancement: { saisie: 80, rapprochement: 60, declarations: 40, bilan: 10 },
-    docs: [{ nom: "Factures janv.", statut: "Reçu" }, { nom: "Relevés bancaires", statut: "En attente" }, { nom: "Notes de frais", statut: "Reçu" }],
-    demandes: [
-      { id: 1, date: "2026-03-10", sujet: "Simulation IS 2025", statut: "En cours", priorite: "Haute" },
-      { id: 2, date: "2026-02-28", sujet: "Attestation TVA", statut: "Traité", priorite: "Normale" }
-    ],
-    factures: [
-      { id: "F2026-001", date: "2026-01-31", montant: 2400, statut: "Payée", libelle: "Honoraires jan." },
-      { id: "F2026-008", date: "2026-02-28", montant: 2400, statut: "Payée", libelle: "Honoraires fév." },
-      { id: "F2026-015", date: "2026-03-31", montant: 2400, statut: "À envoyer", libelle: "Honoraires mar." }
-    ],
-    temps: [
-      { id: 1, date: "2026-03-25", collaborateur: "elie", mission: "Saisie comptable", duree: 3.5, notes: "" },
-      { id: 2, date: "2026-03-26", collaborateur: "elie", mission: "Déclaration TVA", duree: 1.5, notes: "" },
-      { id: 3, date: "2026-03-20", collaborateur: "collab", mission: "Rapprochement bancaire", duree: 2, notes: "" },
-    ],
-    lettresMission: [
-      { id: 1, titre: "Lettre de mission 2025", date: "2025-01-05", statut: "Signée", missions: ["Tenue comptable", "Déclarations fiscales", "Établissement bilan"] }
-    ],
-    echeancesIds: [1, 2],
-    notes: "Client fidèle depuis 2018. TVA mensuelle CA3. Exercice 31/12."
-  },
-  {
-    id: 2, nom: "SASU MARTIN CONSEIL", forme: "SASU", tva: "Franchise", activite: "Conseil",
-    ca: 95000, contact: "Léa Martin", email: "lea@martin-conseil.fr", tel: "07 23 45 67 89",
-    responsable: "collab", statut: "Avancé", honorairesMensuels: 1200,
-    avancement: { saisie: 100, rapprochement: 95, declarations: 80, bilan: 50 },
-    docs: [{ nom: "Factures ventes", statut: "Reçu" }, { nom: "Relevés bancaires", statut: "Reçu" }],
-    demandes: [{ id: 1, date: "2026-03-15", sujet: "Liasse fiscale 2025", statut: "En cours", priorite: "Haute" }],
-    factures: [
-      { id: "F2026-002", date: "2026-01-31", montant: 1200, statut: "Payée", libelle: "Honoraires jan." },
-      { id: "F2026-009", date: "2026-02-28", montant: 1200, statut: "En attente", libelle: "Honoraires fév." }
-    ],
-    temps: [
-      { id: 1, date: "2026-03-22", collaborateur: "collab", mission: "Liasse fiscale", duree: 4, notes: "" },
-      { id: 2, date: "2026-03-18", collaborateur: "collab", mission: "Saisie comptable", duree: 2, notes: "" },
-    ],
-    lettresMission: [
-      { id: 1, titre: "Lettre de mission 2025", date: "2025-01-10", statut: "Signée", missions: ["Tenue comptable", "Liasse fiscale"] }
-    ],
-    echeancesIds: [4, 2],
-    notes: "Franchise TVA. Président assimilé salarié. Clôture 31/12."
-  },
-  {
-    id: 3, nom: "EI BENALI PLOMBERIE", forme: "EI", tva: "Réel simplifié", activite: "Artisan",
-    ca: 220000, contact: "Karim Benali", email: "k.benali@gmail.com", tel: "06 98 76 54 32",
-    responsable: "elie", statut: "En retard", honorairesMensuels: 800,
-    avancement: { saisie: 30, rapprochement: 20, declarations: 10, bilan: 0 },
-    docs: [{ nom: "Factures Q4 2025", statut: "Manquant" }, { nom: "Relevés bancaires", statut: "En attente" }],
-    demandes: [
-      { id: 1, date: "2026-03-01", sujet: "TVA annuelle CA12", statut: "Urgent", priorite: "Urgente" },
-      { id: 2, date: "2026-03-20", sujet: "Passage EURL ?", statut: "En cours", priorite: "Normale" }
-    ],
-    factures: [
-      { id: "F2026-003", date: "2026-01-31", montant: 800, statut: "Impayée", libelle: "Honoraires jan." },
-      { id: "F2026-010", date: "2026-02-28", montant: 800, statut: "Impayée", libelle: "Honoraires fév." }
-    ],
-    temps: [
-      { id: 1, date: "2026-03-15", collaborateur: "elie", mission: "Saisie partielle", duree: 1.5, notes: "En attente docs client" },
-    ],
-    lettresMission: [
-      { id: 1, titre: "Lettre de mission 2024", date: "2024-01-15", statut: "À renouveler", missions: ["Tenue comptable", "Déclarations TVA", "Liasse"] }
-    ],
-    echeancesIds: [3, 6],
-    notes: "⚠️ Documents en retard. Relancer client. CA12 à déposer avant 30/04."
-  },
-  {
-    id: 4, nom: "SCI LES GLYCINES", forme: "SCI", tva: "Sans TVA", activite: "Immobilier",
-    ca: 48000, contact: "Pierre & Anne Rousseau", email: "glycines.sci@orange.fr", tel: "06 11 22 33 44",
-    responsable: "collab", statut: "En cours", honorairesMensuels: 600,
-    avancement: { saisie: 90, rapprochement: 85, declarations: 70, bilan: 60 },
-    docs: [{ nom: "Quittances loyers", statut: "Reçu" }, { nom: "Charges copro", statut: "Reçu" }],
-    demandes: [{ id: 1, date: "2026-03-18", sujet: "Déclaration 2072", statut: "En cours", priorite: "Haute" }],
-    factures: [{ id: "F2026-004", date: "2026-01-31", montant: 600, statut: "Payée", libelle: "Honoraires jan." }],
-    temps: [
-      { id: 1, date: "2026-03-20", collaborateur: "collab", mission: "Déclaration 2072", duree: 3, notes: "" },
-    ],
-    lettresMission: [
-      { id: 1, titre: "Lettre de mission 2025", date: "2025-02-01", statut: "Signée", missions: ["Déclaration 2072", "Tenue comptable SCI"] }
-    ],
-    echeancesIds: [5, 7],
-    notes: "SCI à l'IR. 3 associés. Bien locatif résidentiel."
-  },
-  {
-    id: 5, nom: "SAS TECHFLOW", forme: "SAS", tva: "Réel normal", activite: "Tech / SaaS",
-    ca: 1200000, contact: "Sofia Chen", email: "s.chen@techflow.io", tel: "07 55 44 33 22",
-    responsable: "elie", statut: "En cours", honorairesMensuels: 4800,
-    avancement: { saisie: 65, rapprochement: 55, declarations: 35, bilan: 5 },
-    docs: [{ nom: "Grand livre export", statut: "Reçu" }, { nom: "FEC janv.", statut: "En attente" }],
-    demandes: [
-      { id: 1, date: "2026-03-22", sujet: "CIR – Crédit Impôt Recherche", statut: "En cours", priorite: "Haute" },
-      { id: 2, date: "2026-03-05", sujet: "Audit TVA intracommunautaire", statut: "Traité", priorite: "Haute" }
-    ],
-    factures: [
-      { id: "F2026-005", date: "2026-01-31", montant: 4800, statut: "Payée", libelle: "Honoraires jan." },
-      { id: "F2026-011", date: "2026-02-28", montant: 4800, statut: "Payée", libelle: "Honoraires fév." },
-      { id: "F2026-018", date: "2026-03-31", montant: 4800, statut: "À envoyer", libelle: "Honoraires mar." }
-    ],
-    temps: [
-      { id: 1, date: "2026-03-26", collaborateur: "elie", mission: "Revue analytique", duree: 2.5, notes: "" },
-      { id: 2, date: "2026-03-24", collaborateur: "elie", mission: "CIR dossier", duree: 3, notes: "" },
-      { id: 3, date: "2026-03-22", collaborateur: "collab", mission: "Saisie comptable", duree: 4, notes: "" },
-    ],
-    lettresMission: [
-      { id: 1, titre: "Lettre de mission 2025", date: "2025-01-02", statut: "Signée", missions: ["Tenue comptable", "Déclarations fiscales", "Bilan", "CAC"] }
-    ],
-    echeancesIds: [1, 2, 4, 8, 9],
-    notes: "JEI à vérifier. CIR potentiel. TVA intracommunautaire active. Clôture 31/12."
-  }
+  makeClient(100,"SYNERGIES SVA","","","83819100000000","10 RUE DE L'HOTEL DE VILLE","SERGINES","89140"),
+  makeClient(101,"HERVE BURGUIERE CONSEILS H.B. CONSEILS","","","41043900000000","88 RUE GRIGNAN","MARSEILLE","13001"),
+  makeClient(102,"L'ANTIDOTE","aliboogistyle@gmail.com","","78925800000000","132 BOULEVARD DE LA BLANCARDE","MARSEILLE","13004"),
+  makeClient(103,"ECOTECH","esteban.araujo.pro@gmail.com","33652277718","93433500000000","3 VILLA DES POMMIERS","TREMBLAY-EN-FRANCE","93290"),
+  makeClient(104,"RENAULT LAURENT","laurentnettoyage350@gmail.com","33612843775","84884000000000","1 RUE DE LA MALTONNIERE","LE BOURGNEUF-LA-FORET","53410"),
+  makeClient(105,"TOUILA WESSIM","wessim.touila@yahoo.fr","33625424691","93262500000000","11 BOULEVARD EUGENE GAUTHIER","BEAULIEU-SUR-MER","06310"),
+  makeClient(106,"E2D INVEST","","","98799000000000","94 RUE DRAGON","MARSEILLE","13006"),
+  makeClient(107,"AIDE AUDITION 1","ilan.slama1312@gmail.com","","98367300000000","35 CHEMIN VA A LA FONTAINE","ALLAUCH","13190"),
+  makeClient(108,"D&G CONSTRUCTION","detgconstruction@gmail.com","33766853951","989251137","1 AVENUE ILE DE FRANCE","MARSEILLE","13008"),
+  makeClient(109,"GOUTTE-D'O-EXPERTISE","gdo.expertise@gmail.com","","90756800000000","200 PROMENADE DU CAVAOU","PLAN-DE-CUQUES","13380"),
+  makeClient(110,"DAJOMO","jo.mergui@hotmail.fr","","94446900000000","31 BOULEVARD NOTRE DAME","MARSEILLE","13006"),
+  makeClient(111,"SARL COACHING PACA","contact@coachingpaca.com","","52519100000000","26 BOULEVARD GAY LUSSAC","MARSEILLE","13014"),
+  makeClient(112,"SERENO VICTORIA","victoria.sereno6@gmail.com","","91902600000000","25 BOULEVARD DE SAINT MARCEL","MARSEILLE","13011"),
+  makeClient(113,"NOGIA CONSEIL","bkermarrec@hotmail.fr","","94340000000000","70 RUE DU POINT DU JOUR","BOULOGNE-BILLANCOURT","92100"),
+  makeClient(114,"CLINADENT AVIGNON","","","85382900000000","44 BOULEVARD SAINT-MICHEL","AVIGNON","84000"),
+  makeClient(115,"CLINADENT BAGNOLET","","","81384800000000","29 RUE FRANCOIS MITTERRAND","BAGNOLET","93170"),
+  makeClient(116,"CLINADENT MARSEILLE BOULEVARD NATIONAL","","","82380400000000","BOULEVARD NATIONAL","MARSEILLE","13003"),
+  makeClient(117,"CLINADENT PARIS LOUVRE","","","84405200000000","33 RUE DU LOUVRE","PARIS","75002"),
+  makeClient(118,"CLINADENT MARSEILLE QUATRE SEPTEMBRE","","","83332400000000","1 PLACE DU QUATRE SEPTEMBRE","MARSEILLE","13007"),
+  makeClient(119,"CLINADENT MARSEILLE SAKAKINI","","","83331700000000","92 BOULEVARD SAKAKINI","MARSEILLE","13005"),
+  makeClient(120,"CLINADENT MARSEILLE","","","81484400000000","2 BOULEVARD DES FRERES GODCHOT","MARSEILLE","13005"),
+  makeClient(121,"CLINADENT MONTPELLIER JEU DE PAUME","","","89150500000000","43 BOULEVARD DU JEU DE PAUME","MONTPELLIER","34000"),
+  makeClient(122,"CLINADENT MARSEILLE NEGRESKO","","","83332400000000","26 RUE NEGRESKO","MARSEILLE","13008"),
+  makeClient(123,"CLINADENT NICE JEAN MEDECIN","","","89144000000000","47 AVENUE JEAN MEDECIN","NICE","06000"),
+  makeClient(124,"CLINADENT NIMES","","","88447700000000","64 AV JEAN JAURES","NIMES","30000"),
+  makeClient(125,"CLINADENT MARSEILLE PRADO-PERIER","","","84415200000000","108 AVENUE DU PRADO","MARSEILLE","13008"),
+  makeClient(126,"CLINADENT TOULON","","","89023900000000","5 AVENUE SAINT ROCH","TOULON","83000"),
+  makeClient(127,"CLINADENT PARIS VICTOR HUGO","","","82772300000000","3 PLACE VICTOR HUGO","PARIS","75016"),
+  makeClient(128,"JN3L","benattarjeremy@gmail.com","","99107500000000","39 PROMENADE GEORGES POMPIDOU","MARSEILLE","13008"),
+  makeClient(129,"MISHPAHA","benattarjeremy@gmail.com","","94097700000000","397 CORNICHE DU PDT JOHN F KENNEDY","MARSEILLE","13007"),
+  makeClient(130,"AUDILAN","ilan.slama1312@gmail.com","","93322600000000","103 RUE ALPHONSE DAUDET","MARSEILLE","13013"),
+  makeClient(131,"DRZ DEROZIMO","","","93865300000000","115 RUE JULES MOULET","MARSEILLE","13006"),
+  makeClient(132,"OPEN ACTION SAS","adrien@openaction.eu","","99260500000000","60 RUE FRANCOIS IER","PARIS","75008"),
+  makeClient(133,"LEGAL2DIGITAL","compta.clts@legal2digital.fr","","97986700000000","3 RUE DE PONDICHERY","PARIS","75015"),
+  makeClient(134,"ESKINAZI ILAN","ilan.eskinazi@gmail.com","","84209400000000","7 IMPASSE DU CANAL","SAINT-ESTEVE-JANSON","13610"),
+  makeClient(135,"ALESSI CLAUDE","claude.alessi@orange.fr","","38536000000000","26 BOULEVARD DU SABLIER","MARSEILLE","13008"),
+  makeClient(136,"COZZOLINO GILLES","contact@graphique-com.fr","","45353800000000","73 ROUTE DE BEAURECUEIL","MEYREUIL","13590"),
+  makeClient(137,"CARCASSIN ALEXIS","alexis.carcassin@gmail.com","","82035500000000","44 BOULEVARD MICHELET","MARSEILLE","13008"),
+  makeClient(138,"ESTENOZA ANICEE","anicee.estenoza@gmail.com","","75282200000000","44 BOULEVARD MICHELET","MARSEILLE","13008"),
+  makeClient(139,"MERGUI JOHAN","jo.mergui@hotmail.fr","","81256600000000","75 RUE ALPHONSE DAUDET","MARSEILLE","13013"),
+  makeClient(140,"SLAMA MARCEL ALAIN","alainslama@orange.fr","","41804400000000","3 PLACE LNT ALBERT DURAND","MARSEILLE","13014"),
+  makeClient(141,"BERTHEAU SALOME","bertheau.psychologue@gmail.com","","89264100000000","","",""),
+  makeClient(142,"SLAMA VALERIE","valerie.slama@orange.fr","","39005600000000","19 RUE RAYMONDE MARTIN","MARSEILLE","13013"),
+  makeClient(143,"LMNP SLAMA","alainslama@orange.fr","","41804400000000","3 PLACE LNT ALBERT DURAND","MARSEILLE","13014"),
+  makeClient(144,"GIUSTI MELODIE","melodie.giusti1301@gmail.com","","88428200000000","21 CHEMIN DE PALAMA","MARSEILLE","13013"),
+  makeClient(145,"HUTEAU MARIE-EVE","marie.eve.huteau@gmail.com","","89470400000000","3 RUE D'OCCITANIE","FABREGUES","34690"),
+  makeClient(146,"CHABREUIL SOPHIE","schabreuil@gmail.com","","84900100000000","10 IMPASSE DES CHARMILLES","CHAPONOST","69630"),
+  makeClient(147,"THEOHARIS ALEXANDRE","alextheoperso@gmail.com","","79842100000000","135 RUE DU ROUET","MARSEILLE","13008"),
+  makeClient(148,"BEN ITTAH KEREN","kerenb2455@gmail.com","","53482400000000","12 AV MAL FOCH","MARSEILLE","13004"),
+  makeClient(149,"AU BON OEIL","aubonoeil13@gmail.com","","84538500000000","RUE FRANCOIS MAURIAC","MARSEILLE","13010"),
+  makeClient(150,"RAPH'INVEST","romainhamot@hotmail.com","","88026000000000","19 AVENUE EUGENE CUENOT","MARSEILLE","13009"),
+  makeClient(151,"CHIVA IMMOBILIER","anthony.destriere@gmail.com","","85273800000000","14 AVENUE DU GENERAL DE GAULLE","SAINT-MANDE","94160"),
+  makeClient(152,"COPRO'ASSIST","daniel.allouche@copro-assist.fr","","83007500000000","131 RUE BRETEUIL","MARSEILLE","13006"),
+  makeClient(153,"LE SYNDIC","pascale.leboeuf@wanadoo.fr","","79763900000000","79 RUE DU CHEVALERET","PARIS","75013"),
+  makeClient(154,"SILVANTON GAETAN","gaetan.silvanton@gmail.com","","79005400000000","42 RUE ROQUEBRUNE","MARSEILLE","13004"),
+  makeClient(155,"PM SPORTS","","","50955600000000","890 CHEMIN DE LA CAPELASSE","AIX-EN-PROVENCE","13080"),
+  makeClient(156,"8 SURENE","anthony@footballplayers.agency","","88478600000000","8 RUE DE SURENE","PARIS","75008"),
+  makeClient(157,"STARCO INVEST","anthony@footballplayers.agency","","84977700000000","7 RUE LA BOETIE","PARIS","75008"),
+  makeClient(158,"HAMOT ROMAIN","romainhamot@hotmail.com","","85401000000000","8 RUE EDMOND ROSTAND","MARSEILLE","13006"),
+  makeClient(159,"SASU S.O CONSULTING","osconsultingfr@gmail.com","","90467400000000","46 RUE DAUPHINE","PARIS","75006"),
+  makeClient(160,"ALD ENERGIE","contact@aldenergie.com","","91832200000000","26 RUE FRANCOIS MAURIAC","MARSEILLE","13010"),
+  makeClient(161,"SYMBIOSAE","d.bertheau@symbiosae.fr","","88849000000000","115 CHEMIN DE BOUENHOURE","AIX-EN-PROVENCE","13090"),
+  makeClient(162,"ISOTES","muriel.trichet@isotes.fr","","87826700000000","657 CHEMIN-DE-PATIN","AUBIGNAN","84810"),
+  makeClient(163,"EXPERHIENCE","caroline.achard@experhience.com","","89222500000000","50 RUE GEORGES DUBY","AIX-EN-PROVENCE","13080"),
+  makeClient(164,"MAGNE CYRIL","cm18cyr@hotmail.fr","","94921900000000","85 AVENUE DES PLANTIERS","SAINT-LAURENT-DU-VAR","06700"),
+  makeClient(165,"SARL GIBESTA","aymeric.gibesi@gmail.com","","95126200000000","1 RUE DES FENIERS","SAINT-TROPEZ","83990"),
+  makeClient(166,"MERGUI JOHAN LMNP","jo.mergui@hotmail.fr","","81256600000000","75 ALPHONSE DAUDET","MARSEILLE","13013"),
+  makeClient(167,"SAS LA PALETTE DES OPTICIENS","lapalettedesopticiens@gmail.com","","92910600000000","203 AVENUE PAUL JULLIEN","LE THOLONET","13100"),
+  makeClient(168,"SRH HOLDING","romainhamot@hotmail.com","","892234980","22 CHEMIN DES CHALETS","MARSEILLE","13009"),
+  makeClient(169,"ZESTE DE DECO","zestededeco@yahoo.fr","","44285500000000","18 BIS RUE DIDEROT","SURESNES","92150"),
+  makeClient(170,"SANGRI IMEN","sangriimen@yahoo.fr","","952781524","44 RUE TIQUETONNE","PARIS","75002"),
+  makeClient(171,"SAS AUDITIVE","ilan.slama1312@gmail.com","","98745800000000","38 PLACE EDMOND AUDRAN","MARSEILLE","13004"),
+  makeClient(172,"SAS URBA","","","97760600000000","48 RUE DAUPHINE","PARIS","75006"),
+  makeClient(173,"JACQUET BENOIT","b.jacquet@datack.fr","","524997087","99 BOULEVARD DE LA LIBERATION","MARSEILLE","13001"),
+  makeClient(174,"SAS WAHKAN AA","wakhan.aa@gmail.com","","88257700000000","2 PLACE SAINT-FRANCOIS","NICE","06300"),
+  makeClient(175,"PALERMIMMO","smenjix.levy@gmail.com","","93528100000000","82 RUE JULES MOULET","MARSEILLE","13006"),
+  makeClient(176,"CONTROLE PROVENCE HABITAT","fares.maazouz@gmail.com","","93392900000000","168 RUE DU DIRIGEABLE","AUBAGNE","13400"),
+  makeClient(177,"DYNAMICS FOR DISPLAY - D4D","julien.trombetta@d4d.fr","","52053900000000","10 RUE DE LA PAIX","PARIS","75002"),
+  makeClient(178,"URSU CONSTRUCTION","marianursu@icloud.com","","87940700000000","19 BOULEVARD DE SAINTE MARGUERITE","MARSEILLE","13009"),
+  makeClient(179,"MODERN RENOV","dylanelbaz@hotmail.fr","","91033700000000","258 AVENUE DU PRADO","MARSEILLE","13008"),
+  makeClient(180,"LES 4 TEMPS","cclem2008@live.fr","","89159500000000","9 IMPASSE FERDINAND ARNODIN","MARSEILLE","13010"),
+  makeClient(181,"FOOTBALL PLAYERS AGENCY","anthony@footballplayers.agency","","92843900000000","9 RUE LA BOETIE","PARIS","75008"),
+  makeClient(182,"THE SCIENCE CABINET","ashleyscribbins@gmail.com","","93107200000000","1831 ROUTE DE CANNES ET CLAIRAN","ORTHOUX-SERIGNAC-QUILHAN","30260"),
+  makeClient(183,"NACH INVEST","alextheoperso@gmail.com","","93765800000000","27 BOULEVARD DIE","MARSEILLE","13012"),
+  makeClient(184,"COPR 21 RUE CAILLAUX 75013 PARIS","p.leboeuf@le-syndic.fr","","03925925400017","21 RUE CAILLAUX","PARIS","75013"),
+  makeClient(185,"TAMAR RENOV","batimax13013@gmail.com","","93458500000000","44 RUE DES FORGES","MARSEILLE","13010"),
+  makeClient(186,"PRO PROFIL FRANCE","anthony@cabinet3a.com","","91836500000000","8 RUE DE SURENE","PARIS","75008"),
+  makeClient(187,"DATACK","m.pons@datack.fr","","81034100000000","11 COURS JOSEPH THIERRY","MARSEILLE","13001"),
+  makeClient(188,"ESPERELLE","m.pons@datack.fr","","98013300000000","11 COURS JOSEPH THIERRY","MARSEILLE","13001"),
+  makeClient(189,"PARTIS-PRIS","m.pigamo@partis-pris.com","","98155600000000","11 COURS JOSEPH THIERRY","MARSEILLE","13001"),
+  makeClient(190,"CHEMTOV YANIV","ychemtov@gmail.com","","95106100000000","103 BOULEVARD DE SAINT LOUP","MARSEILLE","13010"),
+  makeClient(191,"COHEN BENJAMIN","benjamin.cohen@mbeartisan.com","","91226700000000","69 RUE DU ROUET","MARSEILLE","13008"),
+  makeClient(192,"TRINITY AASDSSS","carredaasss@gmail.com","","","66 AVENUE DES CHAMPS-ELYSEES","PARIS","75008"),
+  makeClient(193,"SMK CONSEILS","smkconseils@gmail.com","","50522400000000","44 RUE TIQUETONNE","PARIS","75002"),
+  makeClient(194,"CSE CLAIRVAL","cseclairval@gmail.com","","","317 BOULEVARD DU REDON","MARSEILLE","13009"),
+  makeClient(195,"LAURENCE EDY","laurenceedy@gmail.com","","88265300000000","1 RUE D'ALGER","NANTES","44100"),
+  makeClient(196,"MEHRPOUR SAKHA","smehrpourk@gmail.com","","","54 RUE DU FOUR","PARIS","75006"),
+  makeClient(197,"MOUGEL RAPHAEL","raphael.mougel@gmail.com","","80928300000000","18 RUE NEUVE SAINTE CATHERINE","MARSEILLE","13007"),
+  makeClient(198,"LE TEMPS DE VIVRE","delph.ferrara@protonmail.com","","99942800000000","COUSTARRAS","LESPINASSIERE","11160"),
+  makeClient(199,"CRESTANI STEPHAN","","","53028400000000","24 AVENUE DE LA MADRAGUE MONTREDON","MARSEILLE","13008"),
+  makeClient(200,"COLLEC MATISSE","matisse.collec@gmail.com","","83518600000000","16 BOULEVARD CAUVIERE","MARSEILLE","13009"),
+  makeClient(201,"FMR FRED MONTAGE RENOVATION","sas.fmr@yahoo.com","","92038100000000","1 RUE ALEXANDRE CHAZEAUX","MARSEILLE","13013"),
+  makeClient(202,"AUDITIVE","ilan.slama1312@gmail.com","","98745800000000","38 PLACE EDMOND AUDRAN","MARSEILLE","13004"),
+  makeClient(203,"FANNY VOULFOR","fannyvoulfor@gmail.com","","99344000000000","17 AVENUE DES FLEURS","NICE","06000"),
+  makeClient(204,"UFARATZTA","ychemtov@gmail.com","","98799600000000","45 BOULEVARD SACCOMAN","MARSEILLE","13010"),
+  makeClient(205,"SDC ALTITUDE 90","","","","AVENUE ALPHONSE DAUDET","SALON-DE-PROVENCE","13300"),
 ];
 
 const ECHEANCES = [
@@ -1033,16 +1037,86 @@ const Dashboard = ({ clients, currentUser, onSelectClient }) => {
 // ═══════════════════════════════════════════════════════════
 // LISTE CLIENTS
 // ═══════════════════════════════════════════════════════════
-const ClientsList = ({ clients, onSelect, currentUser }) => {
+const NouveauClientModal = ({ onClose, onAdd, currentUser }) => {
+  const [form, setForm] = useState({
+    nom: "", forme: "SARL", tva: "Réel normal", activite: "", ca: "",
+    contact: "", email: "", tel: "", responsable: currentUser.id,
+    honorairesMensuels: "", notes: ""
+  });
+  const [error, setError] = useState("");
+
+  const handleAdd = () => {
+    if (!form.nom || !form.contact || !form.email) { setError("Nom, contact et email sont obligatoires."); return; }
+    const newClient = {
+      id: Date.now(),
+      nom: form.nom.toUpperCase(),
+      forme: form.forme,
+      tva: form.tva,
+      activite: form.activite,
+      ca: parseInt(form.ca) || 0,
+      contact: form.contact,
+      email: form.email,
+      tel: form.tel,
+      responsable: form.responsable,
+      honorairesMensuels: parseInt(form.honorairesMensuels) || 0,
+      statut: "En cours",
+      avancement: { saisie: 0, rapprochement: 0, declarations: 0, bilan: 0 },
+      docs: [],
+      demandes: [],
+      factures: [],
+      temps: [],
+      lettresMission: [],
+      echeancesIds: [],
+      notes: form.notes,
+    };
+    onAdd(newClient);
+    onClose();
+  };
+
+  return (
+    <Modal title="➕ Nouveau client" onClose={onClose} wide>
+      {error && <div style={{ padding: "10px 14px", background: "#fff0f0", border: "1px solid #ffcccc", borderRadius: 8, color: "#c0392b", fontSize: 12, marginBottom: 16 }}>⚠️ {error}</div>}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ gridColumn: "1/-1" }}>
+          <Input label="Dénomination sociale *" value={form.nom} onChange={e => setForm({ ...form, nom: e.target.value })} placeholder="Ex : SARL DUPONT & FILS" />
+        </div>
+        <Sel label="Forme juridique" value={form.forme} onChange={e => setForm({ ...form, forme: e.target.value })} options={["EI", "EURL", "SARL", "SAS", "SASU", "SCI", "SA", "Auto-entrepreneur", "Association"]} />
+        <Input label="Activité" value={form.activite} onChange={e => setForm({ ...form, activite: e.target.value })} placeholder="Ex : BTP, Conseil, Commerce..." />
+        <Sel label="Régime TVA" value={form.tva} onChange={e => setForm({ ...form, tva: e.target.value })} options={["Réel normal", "Réel simplifié", "Franchise", "Sans TVA", "CA12 annuelle"]} />
+        <Input label="CA annuel HT (€)" type="number" value={form.ca} onChange={e => setForm({ ...form, ca: e.target.value })} placeholder="Ex : 250000" />
+        <Input label="Contact *" value={form.contact} onChange={e => setForm({ ...form, contact: e.target.value })} placeholder="Prénom NOM du dirigeant" />
+        <Input label="Email *" type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} placeholder="contact@societe.fr" />
+        <Input label="Téléphone" value={form.tel} onChange={e => setForm({ ...form, tel: e.target.value })} placeholder="06 00 00 00 00" />
+        <Input label="Honoraires HT/mois (€)" type="number" value={form.honorairesMensuels} onChange={e => setForm({ ...form, honorairesMensuels: e.target.value })} placeholder="Ex : 1500" />
+        <Sel label="Responsable dossier" value={form.responsable} onChange={e => setForm({ ...form, responsable: e.target.value })} options={USERS.map(u => ({ value: u.id, label: u.name }))} />
+        <div style={{ gridColumn: "1/-1" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Notes internes</div>
+          <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Informations complémentaires, particularités du dossier..." style={{ width: "100%", minHeight: 80, padding: "10px 12px", borderRadius: 8, border: "1px solid #dde3ea", fontSize: 13, resize: "vertical", boxSizing: "border-box" }} />
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+        <Btn onClick={handleAdd} style={{ flex: 1 }}>✅ Créer le client</Btn>
+        <Btn outline onClick={onClose}>Annuler</Btn>
+      </div>
+    </Modal>
+  );
+};
+
+const ClientsList = ({ clients, onSelect, onAdd, currentUser }) => {
   const [search, setSearch] = useState("");
   const [filterResp, setFilterResp] = useState("all");
+  const [showForm, setShowForm] = useState(false);
   const filtered = clients.filter(c => (c.nom.toLowerCase().includes(search.toLowerCase()) || c.forme.toLowerCase().includes(search.toLowerCase())) && (filterResp === "all" || c.responsable === filterResp));
 
   return (
     <div>
+      {showForm && <NouveauClientModal onClose={() => setShowForm(false)} onAdd={onAdd} currentUser={currentUser} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a2332", margin: 0 }}>Clients</h2>
-        <Badge label={`${clients.length} dossiers`} color="#1a5c8a" />
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a2332", margin: 0 }}>Clients</h2>
+          <p style={{ color: "#888", fontSize: 13, margin: "4px 0 0" }}>{clients.length} dossier(s) au cabinet</p>
+        </div>
+        <Btn onClick={() => setShowForm(true)}>➕ Nouveau client</Btn>
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher…" style={{ flex: 1, padding: "9px 14px", borderRadius: 8, border: "1px solid #e8ecf0", fontSize: 13 }} />
@@ -1288,6 +1362,10 @@ export default function App() {
 
   if (!currentUser) return <LoginScreen onLogin={user => setCurrentUser(user)} />;
 
+  const addClient = (newClient) => {
+    setClients(prev => [...prev, newClient]);
+  };
+
   const navItems = [
     { id: "dashboard", label: "Tableau de bord", icon: "🏠" },
     { id: "clients", label: "Clients", icon: "👥" },
@@ -1334,7 +1412,7 @@ export default function App() {
       {/* Main */}
       <div style={{ flex: 1, overflow: "auto", padding: 26 }}>
         {page === "dashboard" && <Dashboard clients={clients} currentUser={currentUser} onSelectClient={c => { setSelectedClient(c); }} />}
-        {page === "clients" && <ClientsList clients={clients} onSelect={setSelectedClient} currentUser={currentUser} />}
+        {page === "clients" && <ClientsList clients={clients} onSelect={setSelectedClient} onAdd={addClient} currentUser={currentUser} />}
         {page === "alertes" && <AlertesPage clients={clients} onUpdate={updateClient} />}
         {page === "echeances" && <CalendrierFiscal clients={clients} />}
         {page === "facturation" && <Facturation clients={clients} />}
