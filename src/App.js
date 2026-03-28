@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 
 // ═══════════════════════════════════════════════════════════
 // DONNÉES
@@ -582,7 +582,6 @@ const IntegrationsPage = ({ clients, onUpdate }) => {
   const [outlookStatus, setOutlookStatus] = useState("disconnected");
   const [importing, setImporting] = useState(false);
   const [importLog, setImportLog] = useState([]);
-  const [csvContent, setCsvContent] = useState("");
   const fileRef = useRef();
 
   const connectOutlook = () => {
@@ -622,7 +621,6 @@ const IntegrationsPage = ({ clients, onUpdate }) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      setCsvContent(ev.target.result);
       setImportLog([
         `📂 Fichier chargé : ${file.name}`,
         `📊 Analyse du FEC en cours...`,
@@ -938,8 +936,6 @@ const Dashboard = ({ clients, currentUser, onSelectClient }) => {
   const impayees = allFactures.filter(f => f.statut === "Impayée").reduce((s, f) => s + f.montant, 0);
   const totalHeures = clients.flatMap(c => c.temps).reduce((s, t) => s + t.duree, 0);
   const urgentes = ECHEANCES.filter(e => clients.some(c => c.echeancesIds.includes(e.id)) && daysLeft(e.date) <= 30).sort((a, b) => new Date(a.date) - new Date(b.date));
-  const alertCount = clients.flatMap(c => c.factures.filter(f => f.statut === "Impayée")).length + clients.filter(c => c.docs.some(d => d.statut === "Manquant")).length;
-
   return (
     <div>
       <div style={{ marginBottom: 22 }}>
