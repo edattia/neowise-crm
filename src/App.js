@@ -133,18 +133,78 @@ const INITIAL_CLIENTS = [
   makeClient(205,"SDC ALTITUDE 90","","","","AVENUE ALPHONSE DAUDET","SALON-DE-PROVENCE","13300"),
 ];
 
-const ECHEANCES = [
-  { id: 1, label: "TVA CA3 – Mars 2026", date: "2026-04-21", type: "TVA", priorite: "haute" },
-  { id: 2, label: "IS acompte 1er trim.", date: "2026-04-15", type: "IS", priorite: "haute" },
-  { id: 3, label: "TVA CA12 annuelle", date: "2026-04-30", type: "TVA", priorite: "urgente" },
-  { id: 4, label: "Liasse fiscale 2065", date: "2026-05-15", type: "Liasse", priorite: "haute" },
-  { id: 5, label: "Déclaration 2072 SCI", date: "2026-04-30", type: "Déclaration", priorite: "haute" },
-  { id: 6, label: "Déclaration IR (2042)", date: "2026-05-31", type: "IR", priorite: "normale" },
-  { id: 7, label: "CFE – Acompte", date: "2026-06-15", type: "CFE", priorite: "normale" },
-  { id: 8, label: "DSN Avril 2026", date: "2026-05-05", type: "DSN", priorite: "normale" },
-  { id: 9, label: "Bilan clôture 31/12/2025", date: "2026-06-30", type: "Bilan", priorite: "haute" },
-  { id: 10, label: "Liasse fiscale 2031", date: "2026-05-15", type: "Liasse", priorite: "haute" },
-];
+// ═══════════════════════════════════════════════════════════
+// MOTEUR D'ÉCHÉANCES FISCALES AUTOMATIQUES
+// ═══════════════════════════════════════════════════════════
+const genererEcheances = (client) => {
+  const annee = 2026;
+  const echeances = [];
+  let id = 1;
+  const forme = (client.forme || "").toUpperCase();
+  const tva = (client.tva || "").toLowerCase();
+  const isSociete = ["SARL","SAS","SASU","EURL","SA"].some(f => forme.includes(f));
+  const isSCI = forme.includes("SCI");
+  const isEI = forme.includes("EI") || forme.includes("AUTO") || forme.includes("MICRO");
+  const isIS = isSociete;
+
+  if (tva.includes("normal")) {
+    [{m:4,l:"Mars"},{m:5,l:"Avril"},{m:6,l:"Mai"},{m:7,l:"Juin"},
+     {m:9,l:"Août"},{m:10,l:"Sept."},{m:11,l:"Oct."},{m:12,l:"Nov."}
+    ].forEach(({m,l}) => echeances.push({id:id++,label:`TVA CA3 – ${l} ${annee-1}`,date:`${annee}-${String(m).padStart(2,"0")}-21`,type:"TVA",priorite:daysLeft(`${annee}-${String(m).padStart(2,"0")}-21`)<=7?"urgente":"haute",auto:true}));
+  }
+  if (tva.includes("simplifié") || tva.includes("ca12")) {
+    echeances.push({id:id++,label:`TVA CA12 – ${annee-1}`,date:`${annee}-04-30`,type:"TVA",priorite:"urgente",auto:true});
+    echeances.push({id:id++,label:`Acompte TVA Juillet ${annee}`,date:`${annee}-07-25`,type:"TVA",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Acompte TVA Décembre ${annee}`,date:`${annee}-12-19`,type:"TVA",priorite:"normale",auto:true});
+  }
+  if (isIS) {
+    echeances.push({id:id++,label:`Solde IS – ${annee-1}`,date:`${annee}-04-15`,type:"IS",priorite:"urgente",auto:true});
+    [{m:3,n:"1er"},{m:6,n:"2ème"},{m:9,n:"3ème"},{m:12,n:"4ème"}].forEach(({m,n}) =>
+      echeances.push({id:id++,label:`IS acompte ${n} trim. ${annee}`,date:`${annee}-${String(m).padStart(2,"0")}-15`,type:"IS",priorite:"haute",auto:true}));
+    echeances.push({id:id++,label:`Liasse fiscale 2065 – ${annee-1}`,date:`${annee}-05-15`,type:"Liasse",priorite:"haute",auto:true});
+    echeances.push({id:id++,label:`Bilan & comptes annuels – ${annee-1}`,date:`${annee}-06-30`,type:"Bilan",priorite:"haute",auto:true});
+  }
+  if (isEI) {
+    echeances.push({id:id++,label:`Liasse 2031 BIC – ${annee-1}`,date:`${annee}-05-15`,type:"Liasse",priorite:"haute",auto:true});
+    echeances.push({id:id++,label:`Déclaration IR 2042 – ${annee-1}`,date:`${annee}-05-31`,type:"IR",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Acompte IR Sept. ${annee}`,date:`${annee}-09-15`,type:"IR",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Acompte IR Déc. ${annee}`,date:`${annee}-12-15`,type:"IR",priorite:"normale",auto:true});
+    [{n:"T1",m:"04"},{n:"T2",m:"07"},{n:"T3",m:"10"}].forEach(({n,m}) =>
+      echeances.push({id:id++,label:`Décl. CA ${n} ${annee}`,date:`${annee}-${m}-30`,type:"CA",priorite:"haute",auto:true}));
+    echeances.push({id:id++,label:`Cotisations URSSAF T1 ${annee}`,date:`${annee}-02-05`,type:"Social",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Cotisations URSSAF T2 ${annee}`,date:`${annee}-05-05`,type:"Social",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Cotisations URSSAF T3 ${annee}`,date:`${annee}-08-05`,type:"Social",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`Cotisations URSSAF T4 ${annee}`,date:`${annee}-11-05`,type:"Social",priorite:"normale",auto:true});
+  }
+  if (isSCI) {
+    echeances.push({id:id++,label:`Déclaration 2072 SCI – ${annee-1}`,date:`${annee}-04-30`,type:"Déclaration",priorite:"haute",auto:true});
+    echeances.push({id:id++,label:`IR associés SCI – ${annee-1}`,date:`${annee}-05-31`,type:"IR",priorite:"normale",auto:true});
+  }
+  if (isSociete || isEI || isSCI) {
+    echeances.push({id:id++,label:`CFE – Acompte ${annee}`,date:`${annee}-06-15`,type:"CFE",priorite:"normale",auto:true});
+    echeances.push({id:id++,label:`CFE – Solde ${annee}`,date:`${annee}-12-15`,type:"CFE",priorite:"normale",auto:true});
+  }
+  if (forme.includes("SARL") || forme.includes("EURL")) {
+    [{n:"T1",m:"02"},{n:"T2",m:"05"},{n:"T3",m:"08"},{n:"T4",m:"11"}].forEach(({n,m}) =>
+      echeances.push({id:id++,label:`Cotisations TNS ${n} ${annee}`,date:`${annee}-${m}-05`,type:"Social",priorite:"normale",auto:true}));
+  }
+  return echeances.filter(e => daysLeft(e.date) > -60).sort((a,b) => new Date(a.date)-new Date(b.date));
+};
+
+const getSituationFiscale = (client) => {
+  const forme = (client.forme||"").toUpperCase();
+  const tva = (client.tva||"").toLowerCase();
+  const items = [];
+  if (["SARL","SAS","SASU","SA"].some(f=>forme.includes(f))) items.push("Soumise à l'IS");
+  if (forme.includes("SCI")) items.push("SCI – imposition IR associés");
+  if (forme.includes("EI")||forme.includes("MICRO")) items.push("Imposition IR (BIC/BNC)");
+  if (tva.includes("normal")) items.push("TVA réel normal – CA3 mensuelle");
+  if (tva.includes("simplifié")) items.push("TVA réel simplifié – CA12 annuelle");
+  if (tva.includes("franchise")) items.push("Franchise en base de TVA");
+  if (tva.includes("sans")) items.push("Non assujetti à la TVA");
+  return items;
+};
+
 
 const TAUX_HORAIRE = { elie: 180, collab: 90 };
 const MISSIONS_TYPES = ["Saisie comptable", "Rapprochement bancaire", "Déclaration TVA", "Liasse fiscale", "Révision", "Bilan", "Conseil", "Lettre de mission", "CIR", "Autre"];
@@ -513,7 +573,7 @@ const AlertesPage = ({ clients, onUpdate }) => {
 
   // Échéances J-15
   clients.forEach(c => {
-    const echs = ECHEANCES.filter(e => c.echeancesIds.includes(e.id) && daysLeft(e.date) <= 15 && daysLeft(e.date) > 0);
+    const echs = genererEcheances(c).filter(e => daysLeft(e.date) <= 15 && daysLeft(e.date) > 0);
     echs.forEach(e => {
       alertes.push({ id: `ech-${c.id}-${e.id}`, type: "Échéance proche", urgence: daysLeft(e.date) <= 7 ? "urgente" : "haute", client: c, label: `${e.label} dans ${daysLeft(e.date)} jours`, email: c.email, emailBody: `Bonjour ${c.contact.split(" ")[0]},\n\nRappel : ${e.label} est à déposer avant le ${fmt(e.date)}.\n\nMerci de vous assurer que tous les éléments sont transmis.\n\nCordialement,\nElie-Dan ATTIA – NEOWISE EXPERTISE` });
     });
@@ -743,24 +803,470 @@ const IntegrationsPage = ({ clients, onUpdate }) => {
   );
 };
 
+
 // ═══════════════════════════════════════════════════════════
-// FICHE CLIENT COMPLÈTE (modal)
+// FICHE CLIENT COMPLÈTE — inspirée des Excel de suivi
 // ═══════════════════════════════════════════════════════════
+
+const MOIS = ["Jan","Fév","Mar","Avr","Mai","Juin","Juil","Août","Sep","Oct","Nov","Déc"];
+
+// Workflow bilan exact (colonnes de votre Excel AVANCEMENT BILAN)
+const WORKFLOW_BILAN = [
+  { key: "docs_recus", label: "Documents reçus", icon: "📂" },
+  { key: "saisie", label: "Saisie", icon: "⌨️" },
+  { key: "revise_collab", label: "Révisé Collab", icon: "👓" },
+  { key: "revise_eda", label: "Révisé EDA", icon: "✅" },
+  { key: "revue_associe", label: "Revue Associé", icon: "🤝" },
+  { key: "tdfc", label: "TDFC", icon: "📤" },
+  { key: "annexes_fiscales", label: "Annexes fiscales", icon: "📋" },
+  { key: "is", label: "IS", icon: "💰" },
+  { key: "ca12", label: "CA12", icon: "📊" },
+  { key: "cvae", label: "CVAE", icon: "🏢" },
+  { key: "das2", label: "DAS2", icon: "👥" },
+  { key: "envoi_plaquette", label: "Envoi plaquette", icon: "📬" },
+];
+
+const WORKFLOW_MISE_EN_ROUTE = [
+  { key: "fiche_client", label: "Création fiche client" },
+  { key: "compta_n1", label: "Comptabilité N-1 / FEC" },
+  { key: "mandat_ebics", label: "Mandat EBICS / Tiime" },
+  { key: "compte_impots", label: "Compte impots.gouv" },
+  { key: "lettre_mission", label: "Lettre de mission" },
+  { key: "acces_tiime", label: "Accès Tiime configuré" },
+];
+
+const getDefaultWorkflow = () => {
+  const w = {};
+  WORKFLOW_BILAN.forEach(s => { w[s.key] = false; });
+  return w;
+};
+
+const getDefaultMiseEnRoute = () => {
+  const m = {};
+  WORKFLOW_MISE_EN_ROUTE.forEach(s => { m[s.key] = false; });
+  return m;
+};
+
+const getDefaultTVA = () => {
+  const t = {};
+  MOIS.forEach((_, i) => { t[i] = { fait: false, commentaire: "" }; });
+  return t;
+};
+
+const getDefaultIS = () => ({
+  acompte1: { fait: false, montant: "" },
+  acompte2: { fait: false, montant: "" },
+  acompte3: { fait: false, montant: "" },
+  acompte4: { fait: false, montant: "" },
+  solde: { fait: false, montant: "" },
+});
+
+const getDefaultIR = () => ({
+  elements: "",
+  docs_recus: false,
+  saisie: false,
+  revue: false,
+  mail_client: false,
+  envoye_edi: false,
+  commentaire: "",
+});
+
+const getDefaultPlanning = () => {
+  const p = {};
+  MOIS.forEach((_, i) => { p[i] = { eda: "", collab: "" }; });
+  return p;
+};
+
+// Checkbox stylé
+const CB = ({ checked, onChange, label, color = "#1a5c8a" }) => (
+  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", padding: "6px 8px", borderRadius: 6, background: checked ? color + "12" : "transparent", transition: "background .15s" }}>
+    <div onClick={onChange} style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${checked ? color : "#ccc"}`, background: checked ? color : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer", transition: "all .15s" }}>
+      {checked && <span style={{ color: "#fff", fontSize: 11, fontWeight: 900, lineHeight: 1 }}>✓</span>}
+    </div>
+    <span style={{ fontSize: 12, fontWeight: checked ? 700 : 500, color: checked ? color : "#555" }}>{label}</span>
+  </label>
+);
+
+// ── Module Dossier Bilan ──────────────────────────────────
+const DossierBilanPanel = ({ client, onUpdate, currentUser }) => {
+  const workflow = client.workflow || getDefaultWorkflow();
+  const commentaire = client.commentaireBilan || "";
+
+  const toggle = (key) => {
+    const newW = { ...workflow, [key]: !workflow[key] };
+    onUpdate(client.id, { workflow: newW });
+  };
+
+  const done = Object.values(workflow).filter(Boolean).length;
+  const total = WORKFLOW_BILAN.length;
+  const pct = Math.round((done / total) * 100);
+
+  return (
+    <div>
+      {/* Barre progression */}
+      <div style={{ marginBottom: 18, padding: 14, background: "#f0f5fa", borderRadius: 10, border: "1px solid #cce0f5" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 800, marginBottom: 6 }}>
+          <span>Avancement bilan 31/12/2025</span>
+          <span style={{ color: pct === 100 ? "#2d7a4f" : pct >= 60 ? "#b07d1a" : "#c0392b" }}>{done}/{total} étapes · {pct}%</span>
+        </div>
+        <div style={{ background: "#dde9f5", borderRadius: 6, height: 8 }}>
+          <div style={{ width: pct + "%", height: "100%", background: pct === 100 ? "#2d7a4f" : pct >= 60 ? "#b07d1a" : "#1a5c8a", borderRadius: 6, transition: "width .5s" }} />
+        </div>
+        <div style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
+          Responsable : <strong>{USERS.find(u => u.id === client.responsable)?.name}</strong>
+        </div>
+      </div>
+
+      {/* Grille workflow exact comme votre Excel */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+        {WORKFLOW_BILAN.map(step => (
+          <div key={step.key} style={{ padding: "8px 10px", background: workflow[step.key] ? "#f0faf5" : "#f7f9fc", borderRadius: 8, border: "1px solid " + (workflow[step.key] ? "#b8e8cc" : "#e8ecf0"), transition: "all .15s" }}>
+            <CB checked={workflow[step.key]} onChange={() => toggle(step.key)} label={step.icon + " " + step.label} color="#2d7a4f" />
+          </div>
+        ))}
+      </div>
+
+      {/* Commentaire */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Commentaire dossier</div>
+        <textarea
+          value={commentaire}
+          onChange={e => onUpdate(client.id, { commentaireBilan: e.target.value })}
+          placeholder="Relances, observations, points en attente..."
+          style={{ width: "100%", minHeight: 70, padding: "8px 12px", borderRadius: 8, border: "1px solid #dde3ea", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
+        />
+      </div>
+
+      {/* Documents reçus */}
+      {client.docs && client.docs.length > 0 && (
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#1a2332", marginBottom: 8 }}>📂 Documents</div>
+          {client.docs.map((d, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", background: "#f7f9fc", borderRadius: 7, border: "1px solid #e8ecf0", marginBottom: 4 }}>
+              <span style={{ fontSize: 12 }}>📄 {d.nom}</span>
+              <Badge label={d.statut} color={sc(d.statut)} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Module Suivi TVA mensuel ──────────────────────────────
+const SuiviTVAPanel = ({ client, onUpdate }) => {
+  const tva = client.suiviTVA || getDefaultTVA();
+  const annee = 2026;
+  const mode = client.modeTVA || "EDI";
+
+  const toggleMois = (i) => {
+    const newTVA = { ...tva, [i]: { ...tva[i], fait: !tva[i]?.fait } };
+    onUpdate(client.id, { suiviTVA: newTVA });
+  };
+
+  const setComment = (i, val) => {
+    const newTVA = { ...tva, [i]: { ...tva[i], commentaire: val } };
+    onUpdate(client.id, { suiviTVA: newTVA });
+  };
+
+  const fait = Object.values(tva).filter(m => m?.fait).length;
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>Suivi TVA {annee - 1}/{annee}</div>
+          <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{fait}/12 déclarations effectuées</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#888" }}>Mode :</span>
+          <select value={mode} onChange={e => onUpdate(client.id, { modeTVA: e.target.value })}
+            style={{ padding: "4px 8px", borderRadius: 6, border: "1px solid #dde3ea", fontSize: 12 }}>
+            {["EDI", "EDI TRIM", "IMPOT.GOUV", "Tiime", "CA12", "Franchise"].map(m => <option key={m}>{m}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Grille 12 mois */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+        {MOIS.map((mois, i) => {
+          const m = tva[i] || { fait: false, commentaire: "" };
+          return (
+            <div key={i} style={{ padding: 10, background: m.fait ? "#f0faf5" : "#f7f9fc", borderRadius: 9, border: "1px solid " + (m.fait ? "#b8e8cc" : "#e8ecf0"), transition: "all .15s" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#1a2332" }}>{mois} {i < 3 ? annee : annee - 1}</span>
+                <div onClick={() => toggleMois(i)} style={{ width: 22, height: 22, borderRadius: 5, border: "2px solid " + (m.fait ? "#2d7a4f" : "#ccc"), background: m.fait ? "#2d7a4f" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all .15s" }}>
+                  {m.fait && <span style={{ color: "#fff", fontSize: 12, fontWeight: 900 }}>✓</span>}
+                </div>
+              </div>
+              <input
+                value={m.commentaire || ""}
+                onChange={e => setComment(i, e.target.value)}
+                placeholder="Note..."
+                style={{ width: "100%", padding: "3px 6px", borderRadius: 5, border: "1px solid #e8ecf0", fontSize: 10, boxSizing: "border-box" }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Module Suivi IS ───────────────────────────────────────
+const SuiviISPanel = ({ client, onUpdate }) => {
+  const is = client.suiviIS || getDefaultIS();
+  const annee = 2026;
+
+  const toggle = (key) => {
+    const newIS = { ...is, [key]: { ...is[key], fait: !is[key]?.fait } };
+    onUpdate(client.id, { suiviIS: newIS });
+  };
+
+  const setMontant = (key, val) => {
+    const newIS = { ...is, [key]: { ...is[key], montant: val } };
+    onUpdate(client.id, { suiviIS: newIS });
+  };
+
+  const acomptes = [
+    { key: "acompte1", label: "1er acompte", date: "15 mars " + annee },
+    { key: "acompte2", label: "2ème acompte", date: "15 juin " + annee },
+    { key: "acompte3", label: "3ème acompte", date: "15 sept. " + annee },
+    { key: "acompte4", label: "4ème acompte", date: "15 déc. " + annee },
+    { key: "solde", label: "Solde IS", date: "15 avril " + annee },
+  ];
+
+  const fait = acomptes.filter(a => is[a.key]?.fait).length;
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>Suivi acomptes IS {annee}</div>
+      <div style={{ fontSize: 11, color: "#888", marginBottom: 14 }}>{fait}/{acomptes.length} acomptes effectués</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {acomptes.map(a => {
+          const item = is[a.key] || { fait: false, montant: "" };
+          return (
+            <div key={a.key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", background: item.fait ? "#f0faf5" : "#f7f9fc", borderRadius: 10, border: "1px solid " + (item.fait ? "#b8e8cc" : "#e8ecf0") }}>
+              <div onClick={() => toggle(a.key)} style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid " + (item.fait ? "#2d7a4f" : "#ccc"), background: item.fait ? "#2d7a4f" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                {item.fait && <span style={{ color: "#fff", fontSize: 13, fontWeight: 900 }}>✓</span>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700 }}>{a.label}</div>
+                <div style={{ fontSize: 11, color: "#aaa" }}>{a.date}</div>
+              </div>
+              <input
+                value={item.montant || ""}
+                onChange={e => setMontant(a.key, e.target.value)}
+                placeholder="Montant €"
+                style={{ width: 110, padding: "5px 8px", borderRadius: 7, border: "1px solid #dde3ea", fontSize: 12, textAlign: "right" }}
+              />
+              {item.fait && <Badge label="Fait" color="#2d7a4f" />}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── Module Suivi IR Particuliers ──────────────────────────
+const SuiviIRPanel = ({ client, onUpdate }) => {
+  const ir = client.suiviIR || getDefaultIR();
+
+  const update = (key, val) => {
+    onUpdate(client.id, { suiviIR: { ...ir, [key]: val } });
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 14 }}>Suivi IR / Déclaration 2042</div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Éléments à déclarer</div>
+        <textarea
+          value={ir.elements || ""}
+          onChange={e => update("elements", e.target.value)}
+          placeholder="- Salaires&#10;- Revenus fonciers&#10;- RF/SCI&#10;- IFI&#10;- Dons..."
+          style={{ width: "100%", minHeight: 90, padding: "8px 12px", borderRadius: 8, border: "1px solid #dde3ea", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
+        />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
+        {[
+          { key: "docs_recus", label: "📂 Documents reçus" },
+          { key: "saisie", label: "⌨️ Saisie effectuée" },
+          { key: "revue", label: "✅ Revue associé" },
+          { key: "mail_client", label: "📧 Mail client envoyé" },
+          { key: "envoye_edi", label: "📤 Envoyé EDI" },
+        ].map(item => (
+          <div key={item.key} style={{ padding: "8px 10px", background: ir[item.key] ? "#f0faf5" : "#f7f9fc", borderRadius: 8, border: "1px solid " + (ir[item.key] ? "#b8e8cc" : "#e8ecf0") }}>
+            <CB checked={ir[item.key]} onChange={() => update(item.key, !ir[item.key])} label={item.label} color="#2d7a4f" />
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Commentaire</div>
+        <textarea
+          value={ir.commentaire || ""}
+          onChange={e => update("commentaire", e.target.value)}
+          placeholder="Observations, points particuliers..."
+          style={{ width: "100%", minHeight: 60, padding: "8px 12px", borderRadius: 8, border: "1px solid #dde3ea", fontSize: 12, resize: "vertical", boxSizing: "border-box" }}
+        />
+      </div>
+    </div>
+  );
+};
+
+// ── Module Mise en route nouveaux clients ─────────────────
+const MiseEnRoutePanel = ({ client, onUpdate }) => {
+  const mer = client.miseEnRoute || getDefaultMiseEnRoute();
+  const done = Object.values(mer).filter(Boolean).length;
+
+  const toggle = (key) => {
+    onUpdate(client.id, { miseEnRoute: { ...mer, [key]: !mer[key] } });
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800 }}>Mise en route nouveau client</div>
+          <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{done}/{WORKFLOW_MISE_EN_ROUTE.length} étapes complétées</div>
+        </div>
+        {done === WORKFLOW_MISE_EN_ROUTE.length && <Badge label="✅ Prêt" color="#2d7a4f" />}
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ background: "#e8ecf0", borderRadius: 6, height: 6 }}>
+          <div style={{ width: Math.round((done / WORKFLOW_MISE_EN_ROUTE.length) * 100) + "%", height: "100%", background: "#2d7a4f", borderRadius: 6, transition: "width .4s" }} />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {WORKFLOW_MISE_EN_ROUTE.map(step => (
+          <div key={step.key} style={{ padding: "10px 14px", background: mer[step.key] ? "#f0faf5" : "#f7f9fc", borderRadius: 10, border: "1px solid " + (mer[step.key] ? "#b8e8cc" : "#e8ecf0") }}>
+            <CB checked={mer[step.key]} onChange={() => toggle(step.key)} label={step.label} color="#2d7a4f" />
+          </div>
+        ))}
+      </div>
+
+      {/* Infos pratiques */}
+      <div style={{ marginTop: 16, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>N° dossier</div>
+          <input value={client.numeroDossier || ""} onChange={e => onUpdate(client.id, { numeroDossier: e.target.value })}
+            placeholder="Ex: 8831" style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid #dde3ea", fontSize: 12, boxSizing: "border-box" }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>Date entrée cabinet</div>
+          <input type="date" value={client.dateEntree || ""} onChange={e => onUpdate(client.id, { dateEntree: e.target.value })}
+            style={{ width: "100%", padding: "8px 10px", borderRadius: 7, border: "1px solid #dde3ea", fontSize: 12, boxSizing: "border-box" }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Module Planning horaire mensuel ───────────────────────
+const PlanningPanel = ({ client, onUpdate }) => {
+  const planning = client.planning || getDefaultPlanning();
+  const annee = 2026;
+
+  const update = (i, who, val) => {
+    const newP = { ...planning, [i]: { ...planning[i], [who]: val } };
+    onUpdate(client.id, { planning: newP });
+  };
+
+  const totalEDA = Object.values(planning).reduce((s, m) => s + (parseFloat(m?.eda) || 0), 0);
+  const totalCollab = Object.values(planning).reduce((s, m) => s + (parseFloat(m?.collab) || 0), 0);
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <div style={{ fontSize: 13, fontWeight: 800 }}>Planning horaire {annee - 1}/{annee}</div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ textAlign: "center", padding: "4px 10px", background: "#e8f0f8", borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: "#1a5c8a", fontWeight: 700 }}>EDA</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#1a5c8a" }}>{totalEDA}h</div>
+          </div>
+          <div style={{ textAlign: "center", padding: "4px 10px", background: "#e8f5ee", borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: "#2d7a4f", fontWeight: 700 }}>Collab</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#2d7a4f" }}>{totalCollab}h</div>
+          </div>
+          <div style={{ textAlign: "center", padding: "4px 10px", background: "#f7f9fc", borderRadius: 8 }}>
+            <div style={{ fontSize: 10, color: "#888", fontWeight: 700 }}>Total</div>
+            <div style={{ fontSize: 14, fontWeight: 900, color: "#1a2332" }}>{totalEDA + totalCollab}h</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: "#f7f9fc" }}>
+              <th style={{ padding: "8px 10px", textAlign: "left", fontSize: 11, fontWeight: 800, color: "#888", textTransform: "uppercase" }}>Mois</th>
+              {MOIS.map((m, i) => (
+                <th key={i} style={{ padding: "6px 4px", textAlign: "center", fontSize: 10, fontWeight: 700, color: "#888", minWidth: 48 }}>{m}</th>
+              ))}
+              <th style={{ padding: "6px 8px", textAlign: "center", fontSize: 11, fontWeight: 800, color: "#888" }}>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { who: "eda", label: "EDA", color: "#1a5c8a" },
+              { who: "collab", label: "Collab", color: "#2d7a4f" },
+            ].map(row => {
+              const total = Object.values(planning).reduce((s, m) => s + (parseFloat(m?.[row.who]) || 0), 0);
+              return (
+                <tr key={row.who} style={{ borderTop: "1px solid #f0f0f0" }}>
+                  <td style={{ padding: "6px 10px", fontWeight: 700, color: row.color }}>{row.label}</td>
+                  {MOIS.map((_, i) => (
+                    <td key={i} style={{ padding: "4px 2px", textAlign: "center" }}>
+                      <input
+                        type="number"
+                        value={planning[i]?.[row.who] || ""}
+                        onChange={e => update(i, row.who, e.target.value)}
+                        placeholder="0"
+                        style={{ width: 40, padding: "3px 4px", borderRadius: 5, border: "1px solid #e8ecf0", fontSize: 11, textAlign: "center", color: row.color, fontWeight: 700 }}
+                      />
+                    </td>
+                  ))}
+                  <td style={{ padding: "6px 8px", textAlign: "center", fontWeight: 900, color: row.color, background: row.color + "10", borderRadius: 6 }}>{total}h</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// ── FICHE CLIENT PRINCIPALE ───────────────────────────────
 const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
-  const [tab, setTab] = useState("avancement");
+  const [tab, setTab] = useState("dossier");
 
   const tabs = [
-    { id: "avancement", label: "📁 Dossier" },
-    { id: "temps", label: "⏱ Temps / Rentabilité" },
-    { id: "demandes", label: "📋 Demandes" },
+    { id: "dossier", label: "📁 Dossier bilan" },
+    { id: "tva", label: "🧾 Suivi TVA" },
+    { id: "is", label: "💰 Suivi IS" },
+    { id: "ir", label: "📝 Suivi IR" },
+    { id: "planning", label: "📅 Planning" },
+    { id: "mise_en_route", label: "🚀 Mise en route" },
+    { id: "temps", label: "⏱ Temps / Renta" },
+    { id: "demandes", label: "💬 Demandes" },
     { id: "facturation", label: "🧾 Facturation" },
     { id: "echeances", label: "⏳ Échéances" },
     { id: "espace", label: "🔗 Espace client" },
-    { id: "ldm", label: "📄 Lettres mission" },
+    { id: "ldm", label: "📄 LDM" },
     { id: "notes", label: "📝 Notes" },
   ];
 
-  const avg = Math.round(Object.values(client.avancement).reduce((s, v) => s + v, 0) / 4);
+  const workflow = client.workflow || getDefaultWorkflow();
+  const done = Object.values(workflow).filter(Boolean).length;
+  const pct = Math.round((done / WORKFLOW_BILAN.length) * 100);
+
   const [editNotes, setEditNotes] = useState(false);
   const [notesVal, setNotesVal] = useState(client.notes);
   const [showDemandeForm, setShowDemandeForm] = useState(false);
@@ -768,27 +1274,34 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(10,20,40,.55)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 900, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
+      <div style={{ background: "#fff", borderRadius: 18, width: "100%", maxWidth: 960, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,.3)" }}>
 
         {/* Header */}
-        <div style={{ padding: "18px 24px 14px", background: "linear-gradient(135deg,#1a2332,#1a5c8a)", flexShrink: 0 }}>
+        <div style={{ padding: "16px 22px 12px", background: "linear-gradient(135deg,#1a2332,#1a5c8a)", flexShrink: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
-              <h2 style={{ margin: "0 0 6px", fontSize: 19, fontWeight: 900, color: "#fff" }}>{client.nom}</h2>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {[client.forme, client.tva, client.activite, `CA ${fmtM(client.ca)}`].map(l => <Badge key={l} label={l} color="#7ecbf7" />)}
-                <Badge label={client.statut} color={sc(client.statut)} />
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 5 }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 900, color: "#fff" }}>{client.nom}</h2>
+                {client.numeroDossier && <Badge label={"N°" + client.numeroDossier} color="#7ecbf7" />}
               </div>
-              <div style={{ fontSize: 12, color: "#aac8e0", marginTop: 6 }}>{client.contact} · {client.email} · {client.tel} · Resp : {USERS.find(u => u.id === client.responsable)?.name}</div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {[client.forme, client.tva, client.activite].filter(Boolean).map(l => <Badge key={l} label={l} color="#7ecbf7" />)}
+                <Badge label={client.statut || "En cours"} color={sc(client.statut || "En cours")} />
+              </div>
+              <div style={{ fontSize: 11, color: "#aac8e0", marginTop: 5 }}>
+                {[client.contact, client.email, client.tel, "Resp : " + (USERS.find(u => u.id === client.responsable)?.name || "—")].filter(Boolean).join(" · ")}
+              </div>
             </div>
-            <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, fontSize: 16, cursor: "pointer" }}>✕</button>
+            <button onClick={onClose} style={{ background: "rgba(255,255,255,.15)", border: "none", color: "#fff", borderRadius: 8, width: 32, height: 32, fontSize: 16, cursor: "pointer", flexShrink: 0 }}>✕</button>
           </div>
+          {/* Barre avancement bilan */}
           <div style={{ marginTop: 10 }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#aac8e0", marginBottom: 3 }}>
-              <span>Avancement global</span><span style={{ fontWeight: 800 }}>{avg}%</span>
+              <span>Avancement bilan</span>
+              <span style={{ fontWeight: 800 }}>{pct}% · {done}/{WORKFLOW_BILAN.length} étapes</span>
             </div>
             <div style={{ background: "rgba(255,255,255,.2)", borderRadius: 6, height: 6 }}>
-              <div style={{ width: `${avg}%`, height: "100%", background: avg >= 80 ? "#4de899" : avg >= 50 ? "#ffc93c" : "#ff6b6b", borderRadius: 6 }} />
+              <div style={{ width: pct + "%", height: "100%", background: pct === 100 ? "#4de899" : pct >= 60 ? "#ffc93c" : "#ff6b6b", borderRadius: 6, transition: "width .5s" }} />
             </div>
           </div>
         </div>
@@ -796,37 +1309,19 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
         {/* Tabs */}
         <div style={{ display: "flex", borderBottom: "1px solid #e8ecf0", background: "#f7f9fc", overflowX: "auto", flexShrink: 0 }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ border: "none", background: "none", padding: "10px 14px", fontSize: 12, fontWeight: tab === t.id ? 800 : 500, color: tab === t.id ? "#1a5c8a" : "#888", borderBottom: tab === t.id ? "2px solid #1a5c8a" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>{t.label}</button>
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ border: "none", background: "none", padding: "9px 13px", fontSize: 11, fontWeight: tab === t.id ? 800 : 500, color: tab === t.id ? "#1a5c8a" : "#888", borderBottom: tab === t.id ? "2px solid #1a5c8a" : "2px solid transparent", cursor: "pointer", whiteSpace: "nowrap" }}>{t.label}</button>
           ))}
         </div>
 
         {/* Content */}
-        <div style={{ flex: 1, overflow: "auto", padding: 22 }}>
+        <div style={{ flex: 1, overflow: "auto", padding: 20 }}>
 
-          {tab === "avancement" && (
-            <div>
-              <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 14px" }}>Avancement comptable</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
-                {[["saisie", "Saisie comptable", "⌨️"], ["rapprochement", "Rapprochement bancaire", "🏦"], ["declarations", "Déclarations fiscales", "📑"], ["bilan", "Bilan / Liasse", "📊"]].map(([key, label, icon]) => (
-                  <div key={key} style={{ padding: 14, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{icon} {label}</div>
-                    <Bar value={client.avancement[key]} color={client.avancement[key] >= 80 ? "#2d7a4f" : client.avancement[key] >= 50 ? "#b07d1a" : "#c0392b"} />
-                    <input type="range" min={0} max={100} value={client.avancement[key]}
-                      onChange={e => onUpdate(client.id, { avancement: { ...client.avancement, [key]: +e.target.value } })}
-                      style={{ width: "100%", accentColor: "#1a5c8a" }} />
-                  </div>
-                ))}
-              </div>
-              <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 12px" }}>Documents</h3>
-              {client.docs.map((d, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "9px 12px", background: "#f7f9fc", borderRadius: 8, border: "1px solid #e8ecf0", marginBottom: 6 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>📄 {d.nom}</span>
-                  <Badge label={d.statut} color={sc(d.statut)} />
-                </div>
-              ))}
-            </div>
-          )}
-
+          {tab === "dossier" && <DossierBilanPanel client={client} onUpdate={onUpdate} currentUser={currentUser} />}
+          {tab === "tva" && <SuiviTVAPanel client={client} onUpdate={onUpdate} />}
+          {tab === "is" && <SuiviISPanel client={client} onUpdate={onUpdate} />}
+          {tab === "ir" && <SuiviIRPanel client={client} onUpdate={onUpdate} />}
+          {tab === "planning" && <PlanningPanel client={client} onUpdate={onUpdate} />}
+          {tab === "mise_en_route" && <MiseEnRoutePanel client={client} onUpdate={onUpdate} />}
           {tab === "temps" && <TempsPanel client={client} onUpdate={onUpdate} currentUser={currentUser} />}
 
           {tab === "demandes" && (
@@ -840,12 +1335,12 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
                   <Input label="Sujet" value={newDemande.sujet} onChange={e => setNewDemande({ ...newDemande, sujet: e.target.value })} placeholder="Sujet..." />
                   <Sel label="Priorité" value={newDemande.priorite} onChange={e => setNewDemande({ ...newDemande, priorite: e.target.value })} options={["Urgente", "Haute", "Normale"]} />
                   <div style={{ display: "flex", gap: 8 }}>
-                    <Btn small onClick={() => { if (!newDemande.sujet) return; onUpdate(client.id, { demandes: [...client.demandes, { id: Date.now(), date: "2026-03-28", sujet: newDemande.sujet, statut: "En cours", priorite: newDemande.priorite }] }); setNewDemande({ sujet: "", priorite: "Normale" }); setShowDemandeForm(false); }}>Ajouter</Btn>
+                    <Btn small onClick={() => { if (!newDemande.sujet) return; onUpdate(client.id, { demandes: [...(client.demandes||[]), { id: Date.now(), date: "2026-03-28", sujet: newDemande.sujet, statut: "En cours", priorite: newDemande.priorite }] }); setNewDemande({ sujet: "", priorite: "Normale" }); setShowDemandeForm(false); }}>Ajouter</Btn>
                     <Btn small outline onClick={() => setShowDemandeForm(false)}>Annuler</Btn>
                   </div>
                 </div>
               )}
-              {client.demandes.map(d => (
+              {(client.demandes||[]).map(d => (
                 <div key={d.id} style={{ padding: 12, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0", marginBottom: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <div>
@@ -853,11 +1348,11 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
                       <div style={{ fontSize: 11, color: "#aaa" }}>{fmt(d.date)}</div>
                     </div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <Badge label={d.priorite} color={pc(d.priorite.toLowerCase())} />
+                      <Badge label={d.priorite} color={pc(d.priorite?.toLowerCase())} />
                       <Badge label={d.statut} color={sc(d.statut)} />
                     </div>
                   </div>
-                  {d.statut !== "Traité" && <Btn small style={{ marginTop: 8 }} color="#2d7a4f" onClick={() => onUpdate(client.id, { demandes: client.demandes.map(x => x.id === d.id ? { ...x, statut: "Traité" } : x) })}>✓ Marquer traité</Btn>}
+                  {d.statut !== "Traité" && <Btn small style={{ marginTop: 8 }} color="#2d7a4f" onClick={() => onUpdate(client.id, { demandes: client.demandes.map(x => x.id === d.id ? { ...x, statut: "Traité" } : x) })}>✓ Traité</Btn>}
                 </div>
               ))}
             </div>
@@ -867,17 +1362,17 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }}>
                 {[
-                  { label: "Total facturé", val: client.factures.reduce((s, f) => s + f.montant, 0), color: "#1a5c8a" },
-                  { label: "Encaissé", val: client.factures.filter(f => f.statut === "Payée").reduce((s, f) => s + f.montant, 0), color: "#2d7a4f" },
-                  { label: "En attente / impayé", val: client.factures.filter(f => f.statut !== "Payée" && f.statut !== "À envoyer").reduce((s, f) => s + f.montant, 0), color: "#c0392b" },
-                ].map((k, i) => (
+                  { label: "Total facturé", val: (client.factures||[]).reduce((s,f)=>s+f.montant,0), color: "#1a5c8a" },
+                  { label: "Encaissé", val: (client.factures||[]).filter(f=>f.statut==="Payée").reduce((s,f)=>s+f.montant,0), color: "#2d7a4f" },
+                  { label: "En attente", val: (client.factures||[]).filter(f=>f.statut!=="Payée"&&f.statut!=="À envoyer").reduce((s,f)=>s+f.montant,0), color: "#c0392b" },
+                ].map((k,i) => (
                   <div key={i} style={{ padding: 12, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0", textAlign: "center" }}>
                     <div style={{ fontSize: 10, color: "#888", fontWeight: 700, textTransform: "uppercase" }}>{k.label}</div>
                     <div style={{ fontSize: 18, fontWeight: 900, color: k.color, marginTop: 4 }}>{fmtM(k.val)}</div>
                   </div>
                 ))}
               </div>
-              {client.factures.map(f => (
+              {(client.factures||[]).map(f => (
                 <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: "#f7f9fc", borderRadius: 8, border: "1px solid #e8ecf0", marginBottom: 6 }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 12, fontWeight: 800 }}>{f.id}</div>
@@ -887,17 +1382,33 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
                   <Badge label={f.statut} color={sc(f.statut)} />
                 </div>
               ))}
+              {(!client.factures || client.factures.length === 0) && (
+                <div style={{ textAlign: "center", padding: 30, color: "#aaa", fontSize: 13 }}>Aucune facture enregistrée</div>
+              )}
             </div>
           )}
 
           {tab === "echeances" && (
             <div>
-              <h3 style={{ fontSize: 13, fontWeight: 800, margin: "0 0 14px" }}>Échéances fiscales & sociales</h3>
-              {ECHEANCES.filter(e => client.echeancesIds.includes(e.id)).sort((a, b) => new Date(a.date) - new Date(b.date)).map(e => {
+              {(client.forme && client.forme !== "À définir") ? (
+                <div style={{ padding: 12, background: "#f0f5fa", borderRadius: 10, border: "1px solid #cce0f5", marginBottom: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: "#1a5c8a", marginBottom: 6, textTransform: "uppercase" }}>Situation fiscale</div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    {getSituationFiscale(client).map((item, i) => <Badge key={i} label={item} color="#1a5c8a" />)}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: 12, background: "#fffbf0", borderRadius: 10, border: "1px solid #ffe5a0", marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, color: "#b07d1a", fontWeight: 700 }}>Renseignez la forme juridique pour voir les écheances automatiques.</div>
+                </div>
+              )}
+              {genererEcheances(client).map(e => {
                 const j = daysLeft(e.date);
                 return (
-                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: j <= 7 ? "#fff0f0" : j <= 15 ? "#fffbf0" : "#f7f9fc", borderRadius: 10, border: `1px solid ${j <= 7 ? "#ffcccc" : j <= 15 ? "#ffe5a0" : "#e8ecf0"}`, marginBottom: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 900, color: j <= 7 ? "#c0392b" : j <= 15 ? "#b07d1a" : "#1a5c8a", minWidth: 48, textAlign: "center", background: j <= 7 ? "#ffecec" : j <= 15 ? "#fff4cc" : "#e8f0f8", borderRadius: 8, padding: "3px 6px" }}>J-{j}</span>
+                  <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", background: j <= 7 ? "#fff0f0" : j <= 15 ? "#fffbf0" : "#f7f9fc", borderRadius: 10, border: "1px solid " + (j <= 7 ? "#ffcccc" : j <= 15 ? "#ffe5a0" : "#e8ecf0"), marginBottom: 7 }}>
+                    <span style={{ fontSize: 11, fontWeight: 900, color: j <= 7 ? "#c0392b" : j <= 15 ? "#b07d1a" : "#1a5c8a", minWidth: 44, textAlign: "center", background: j <= 7 ? "#ffecec" : j <= 15 ? "#fff4cc" : "#e8f0f8", borderRadius: 7, padding: "3px 5px" }}>
+                      {j <= 0 ? "Passé" : "J-" + j}
+                    </span>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 700 }}>{e.label}</div>
                       <div style={{ fontSize: 11, color: "#aaa" }}>{fmt(e.date)}</div>
@@ -920,26 +1431,25 @@ const ClientDetail = ({ client, onClose, currentUser, onUpdate }) => {
               </div>
               {editNotes
                 ? <textarea value={notesVal} onChange={e => setNotesVal(e.target.value)} style={{ width: "100%", minHeight: 180, padding: 14, borderRadius: 10, border: "1px solid #1a5c8a", fontSize: 13, lineHeight: 1.6, resize: "vertical", boxSizing: "border-box" }} />
-                : <div style={{ padding: 16, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{client.notes}</div>
+                : <div style={{ padding: 16, background: "#f7f9fc", borderRadius: 10, border: "1px solid #e8ecf0", fontSize: 13, lineHeight: 1.7, whiteSpace: "pre-wrap", minHeight: 60 }}>{client.notes || "Aucune note."}</div>
               }
             </div>
           )}
+
         </div>
       </div>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════
-// DASHBOARD
-// ═══════════════════════════════════════════════════════════
 const Dashboard = ({ clients, currentUser, onSelectClient }) => {
   const totalCA = clients.reduce((s, c) => s + c.ca, 0);
   const allFactures = clients.flatMap(c => c.factures);
   const totalEncaisse = allFactures.filter(f => f.statut === "Payée").reduce((s, f) => s + f.montant, 0);
   const impayees = allFactures.filter(f => f.statut === "Impayée").reduce((s, f) => s + f.montant, 0);
   const totalHeures = clients.flatMap(c => c.temps).reduce((s, t) => s + t.duree, 0);
-  const urgentes = ECHEANCES.filter(e => clients.some(c => c.echeancesIds.includes(e.id)) && daysLeft(e.date) <= 30).sort((a, b) => new Date(a.date) - new Date(b.date));
+  const allEcheances = clients.flatMap(c => genererEcheances(c).map(e => ({...e, clientNom: c.nom, clientId: c.id})));
+  const urgentes = allEcheances.filter(e => daysLeft(e.date) <= 30 && daysLeft(e.date) > 0).sort((a,b) => new Date(a.date)-new Date(b.date)).reduce((acc, e) => { const existing = acc.find(x => x.label===e.label); if(!existing) acc.push(e); return acc; }, []);
   return (
     <div>
       <div style={{ marginBottom: 22 }}>
@@ -976,7 +1486,7 @@ const Dashboard = ({ clients, currentUser, onSelectClient }) => {
           </div>
           {urgentes.map(e => {
             const j = daysLeft(e.date);
-            const clientsE = clients.filter(c => c.echeancesIds.includes(e.id));
+            const clientsE = clients.filter(c => genererEcheances(c).some(ec => ec.label === e.label));
             return (
               <div key={e.id} style={{ display: "flex", gap: 10, padding: "8px 10px", background: j <= 7 ? "#fff0f0" : j <= 15 ? "#fffbf0" : "#f7f9fc", borderRadius: 8, border: `1px solid ${j <= 7 ? "#ffcccc" : j <= 15 ? "#ffe5a0" : "#e8ecf0"}`, marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 900, color: j <= 7 ? "#c0392b" : j <= 15 ? "#b07d1a" : "#1a5c8a", minWidth: 38, textAlign: "center", background: j <= 7 ? "#ffecec" : j <= 15 ? "#fff4cc" : "#e8f0f8", borderRadius: 6, padding: "2px 4px" }}>J-{j}</span>
@@ -995,7 +1505,7 @@ const Dashboard = ({ clients, currentUser, onSelectClient }) => {
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 800 }}>📁 Avancement dossiers</h3>
           </div>
           {clients.map(c => {
-            const avg = Math.round(Object.values(c.avancement).reduce((s, v) => s + v, 0) / 4);
+            const avg = Math.round((Object.values(c.workflow || {}).filter(Boolean).length / 12) * 100);
             return (
               <div key={c.id} onClick={() => onSelectClient(c)} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #e8ecf0", marginBottom: 6, cursor: "pointer" }}
                 onMouseEnter={e => e.currentTarget.style.background = "#f0f5fa"}
@@ -1126,7 +1636,7 @@ const ClientsList = ({ clients, onSelect, onAdd, currentUser }) => {
         </select>
       </div>
       {filtered.map(c => {
-        const avg = Math.round(Object.values(c.avancement).reduce((s, v) => s + v, 0) / 4);
+        const avg = Math.round((Object.values(c.workflow || {}).filter(Boolean).length / 12) * 100);
         const resp = USERS.find(u => u.id === c.responsable);
         const impayees = c.factures.filter(f => f.statut === "Impayée").reduce((s, f) => s + f.montant, 0);
         const totalHeures = c.temps.reduce((s, t) => s + t.duree, 0);
@@ -1166,33 +1676,69 @@ const ClientsList = ({ clients, onSelect, onAdd, currentUser }) => {
 // ═══════════════════════════════════════════════════════════
 const CalendrierFiscal = ({ clients }) => {
   const [filter, setFilter] = useState("all");
-  const types = [...new Set(ECHEANCES.map(e => e.type))];
-  const filtered = ECHEANCES.filter(e => filter === "all" || e.type === filter).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const allEcheances = clients
+    .filter(c => c.forme && c.forme !== "A definir")
+    .flatMap(c => genererEcheances(c).map(e => ({ ...e, clientNom: c.nom, clientId: c.id })));
+
+  const grouped = allEcheances.reduce((acc, e) => {
+    const key = e.label + "__" + e.date;
+    if (!acc[key]) acc[key] = { ...e, clients: [] };
+    if (!acc[key].clients.find(c => c.id === e.clientId))
+      acc[key].clients.push({ id: e.clientId, nom: e.clientNom });
+    return acc;
+  }, {});
+
+  const types = [...new Set(Object.values(grouped).map(e => e.type))].sort();
+  const filtered = Object.values(grouped)
+    .filter(e => filter === "all" || e.type === filter)
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  const clientsSansForme = clients.filter(c => !c.forme || c.forme === "A definir");
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a2332", margin: 0 }}>Calendrier fiscal</h2>
-        <Btn small onClick={() => alert("📅 Toutes les échéances exportées vers Microsoft Outlook 365")}>📅 Exporter Outlook</Btn>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: "#1a2332", margin: 0 }}>Calendrier fiscal</h2>
+          <p style={{ color: "#888", fontSize: 13, margin: "4px 0 0" }}>{filtered.length} echeances · {clients.filter(c => c.forme && c.forme !== "A definir").length} clients actifs</p>
+        </div>
+        <Btn small onClick={() => alert("Echeances exportees vers Outlook 365")}>📅 Exporter Outlook</Btn>
       </div>
+
+      {clientsSansForme.length > 0 && (
+        <div style={{ padding: 12, background: "#fffbf0", borderRadius: 10, border: "1px solid #ffe5a0", marginBottom: 16, fontSize: 12, color: "#b07d1a" }}>
+          <strong>{clientsSansForme.length} client(s)</strong> sans forme juridique — leurs echeances ne sont pas generees.
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         {["all", ...types].map(t => (
-          <button key={t} onClick={() => setFilter(t)} style={{ border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", background: filter === t ? "#1a5c8a" : "#f0f4f8", color: filter === t ? "#fff" : "#555" }}>{t === "all" ? "Toutes" : t}</button>
+          <button key={t} onClick={() => setFilter(t)} style={{ border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, cursor: "pointer", background: filter === t ? "#1a5c8a" : "#f0f4f8", color: filter === t ? "#fff" : "#555" }}>
+            {t === "all" ? "Toutes (" + Object.values(grouped).length + ")" : t}
+          </button>
         ))}
       </div>
-      {filtered.map(e => {
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 60, color: "#aaa" }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Aucune echeance</div>
+          <div style={{ fontSize: 13 }}>Completez la forme juridique de vos clients</div>
+        </div>
+      ) : filtered.map((e, idx) => {
         const j = daysLeft(e.date);
-        const clientsE = clients.filter(c => c.echeancesIds.includes(e.id));
         return (
-          <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: j <= 7 ? "#fff0f0" : j <= 15 ? "#fffbf0" : "#fff", borderRadius: 12, border: `1px solid ${j <= 7 ? "#ffcccc" : j <= 15 ? "#ffe5a0" : "#e8ecf0"}`, marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
+          <div key={idx} style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 18px", background: j <= 7 ? "#fff0f0" : j <= 15 ? "#fffbf0" : "#fff", borderRadius: 12, border: "1px solid " + (j <= 7 ? "#ffcccc" : j <= 15 ? "#ffe5a0" : "#e8ecf0"), marginBottom: 10, boxShadow: "0 1px 3px rgba(0,0,0,.04)" }}>
             <div style={{ textAlign: "center", minWidth: 64, padding: "6px 8px", background: j <= 7 ? "#ffecec" : j <= 15 ? "#fff4cc" : "#f0f5fa", borderRadius: 10 }}>
-              <div style={{ fontSize: 18, fontWeight: 900, color: j <= 7 ? "#c0392b" : j <= 15 ? "#b07d1a" : "#1a5c8a" }}>J-{j}</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: j <= 7 ? "#c0392b" : j <= 15 ? "#b07d1a" : "#1a5c8a" }}>{j <= 0 ? "Passe" : "J-" + j}</div>
               <div style={{ fontSize: 10, color: "#aaa" }}>{fmt(e.date)}</div>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 4 }}>{e.label}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 6 }}>{e.label}</div>
               <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                {clientsE.map((c, i) => <Badge key={i} label={c.nom} color="#555" />)}
+                {e.clients.slice(0, 4).map((c, i) => <Badge key={i} label={c.nom} color="#555" />)}
+                {e.clients.length > 4 && <Badge label={"+" + (e.clients.length - 4) + " autres"} color="#888" />}
               </div>
             </div>
             <Badge label={e.type} color={pc(e.priorite)} />
@@ -1203,9 +1749,6 @@ const CalendrierFiscal = ({ clients }) => {
   );
 };
 
-// ═══════════════════════════════════════════════════════════
-// FACTURATION GLOBALE
-// ═══════════════════════════════════════════════════════════
 const Facturation = ({ clients }) => {
   const [filter, setFilter] = useState("all");
   const allF = clients.flatMap(c => c.factures.map(f => ({ ...f, client: c.nom, email: c.email }))).sort((a, b) => new Date(b.date) - new Date(a.date));
